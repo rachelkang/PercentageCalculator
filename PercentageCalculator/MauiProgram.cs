@@ -17,6 +17,7 @@ public static class MauiProgram
 			});
 
 		builder.Services.AddMauiBlazorWebView();
+		builder.Services.AddSingleton<LocalStorageService>();
 		builder.Services.AddSingleton<ICalculationService, CalculationService>();
 		builder.Services.AddSingleton<IClipboardService, MauiClipboardService>();
 

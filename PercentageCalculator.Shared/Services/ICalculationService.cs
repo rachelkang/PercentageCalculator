@@ -22,4 +22,7 @@ public interface ICalculationService
     void AddToHistory(CalculationRecord record);
     void RemoveFromHistory(string id);
     void ClearHistory();
+
+    /// <summary>Load history from persistent storage. Call once on app startup.</summary>
+    Task LoadHistoryAsync();
 }

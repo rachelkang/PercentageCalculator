@@ -40,8 +40,9 @@ else
 @code {
     private List<CalculationRecord> records = [];
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        await CalcService.LoadHistoryAsync();
         Refresh();
     }
 

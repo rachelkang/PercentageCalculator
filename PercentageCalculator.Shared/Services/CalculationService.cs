@@ -1,12 +1,45 @@
+using System.Text.Json;
 using PercentageCalculator.Models;
 
 namespace PercentageCalculator.Services;
 
 public class CalculationService : ICalculationService
 {
-    private readonly List<CalculationRecord> _history = [];
+    private const string StorageKey = "calc_history";
+    private readonly LocalStorageService _storage;
+    private List<CalculationRecord> _history = [];
+    private bool _loaded;
+
+    public CalculationService(LocalStorageService storage)
+    {
+        _storage = storage;
+    }
 
     public IReadOnlyList<CalculationRecord> History => _history.AsReadOnly();
+
+    public async Task LoadHistoryAsync()
+    {
+        if (_loaded) return;
+        var json = await _storage.GetAsync(StorageKey);
+        if (!string.IsNullOrEmpty(json))
+        {
+            _history = JsonSerializer.Deserialize<List<CalculationRecord>>(json) ?? [];
+        }
+        _loaded = true;
+    }
+
+    private async void PersistAsync()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(_history);
+            await _storage.SetAsync(StorageKey, json);
+        }
+        catch
+        {
+            // Best-effort persistence
+        }
+    }
 
     public (double percentage, bool isHigher) PercentChange(double a, double b)
     {
@@ -44,19 +77,22 @@ public class CalculationService : ICalculationService
 
     public void AddToHistory(CalculationRecord record)
     {
-        _history.Insert(0, record); // Most recent first
+        _history.Insert(0, record);
         if (_history.Count > 100)
             _history.RemoveAt(_history.Count - 1);
+        PersistAsync();
     }
 
     public void RemoveFromHistory(string id)
     {
         var item = _history.FirstOrDefault(r => r.Id == id);
         if (item != null) _history.Remove(item);
+        PersistAsync();
     }
 
     public void ClearHistory()
     {
         _history.Clear();
+        PersistAsync();
     }
 }
