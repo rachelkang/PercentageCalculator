@@ -2,6 +2,8 @@
 
 A sleek, cross-platform percentage calculator built with **.NET MAUI Blazor Hybrid** + **Blazor WebAssembly**. Shared Razor components power both a native desktop/mobile app and a web app from a single codebase.
 
+**[🌐 Try it in your browser](https://rachelkang.github.io/PercentageCalculator/)** · **[📦 Download native apps](https://github.com/rachelkang/PercentageCalculator/releases)**
+
 ## Features
 
 ### 🔢 Percentage Calculator
