@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="456" height="456" viewBox="0 0 456 456" xmlns="http://www.w3.org/2000/svg">
+    <!-- Stylized % sign -->
+    <!-- Top-left circle (smaller "o" of %) -->
+    <circle cx="162" cy="162" r="52" fill="none" stroke="#FFFFFF" stroke-width="28"/>
+    <!-- Bottom-right circle (larger "o" of %) -->
+    <circle cx="294" cy="294" r="52" fill="none" stroke="#FFFFFF" stroke-width="28"/>
+    <!-- Diagonal slash — bold and angled -->
+    <line x1="316" y1="118" x2="140" y2="338" stroke="#FFFFFF" stroke-width="32" stroke-linecap="round"/>
+</svg>

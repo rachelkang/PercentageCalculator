@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="PercentageCalculator.Shared/PercentageCalculator.Shared.csproj" />
+  <Project Path="PercentageCalculator.Web/PercentageCalculator.Web.csproj" />
+  <Project Path="PercentageCalculator/PercentageCalculator.csproj" />
+</Solution>

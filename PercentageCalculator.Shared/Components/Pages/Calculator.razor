@@ -1,0 +1,194 @@
+@page "/"
+@inject ICalculationService CalcService
+@inject IClipboardService ClipboardService
+
+<div class="page-header">
+    <div class="icon" aria-hidden="true">%</div>
+    <h1>Calculator</h1>
+</div>
+
+<!-- Mode Selector -->
+<div class="mode-selector" role="tablist" aria-label="Calculation mode">
+    <button role="tab" class="mode-btn @(mode == 0 ? "active" : "")" type="button"
+            aria-selected="@(mode == 0)" @onclick="() => SetMode(0)">% Change</button>
+    <button role="tab" class="mode-btn @(mode == 1 ? "active" : "")" type="button"
+            aria-selected="@(mode == 1)" @onclick="() => SetMode(1)">% Of</button>
+    <button role="tab" class="mode-btn @(mode == 2 ? "active" : "")" type="button"
+            aria-selected="@(mode == 2)" @onclick="() => SetMode(2)">Reverse</button>
+</div>
+
+<!-- Input Form — Enter to submit, Tab between fields -->
+<form @onsubmit="Calculate" @onsubmit:preventDefault>
+    <div class="card">
+        <div class="input-group">
+            <label class="input-label" for="inputA">@LabelA</label>
+            <input id="inputA" class="calc-input" type="number" step="any"
+                   placeholder="@PlaceholderA" autocomplete="off"
+                   @bind="inputA" @bind:event="oninput" />
+        </div>
+
+        <div class="input-group">
+            <label class="input-label" for="inputB">@LabelB</label>
+            <input id="inputB" class="calc-input" type="number" step="any"
+                   placeholder="@PlaceholderB" autocomplete="off"
+                   @bind="inputB" @bind:event="oninput" />
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex; gap:8px;">
+        <button class="btn-primary" style="flex:1;" type="submit">Calculate</button>
+        <button class="btn-secondary" style="height:56px; padding:0 20px;" type="button"
+                aria-label="Clear all fields" @onclick="ClearFields">✕ Clear</button>
+    </div>
+</form>
+
+<!-- Utility toolbar — swap & precision, out of main flow -->
+<div class="utility-toolbar" role="toolbar" aria-label="Calculation options">
+    @if (mode == 0)
+    {
+        <button class="btn-secondary" type="button" aria-label="Swap input values" @onclick="Swap">⇅ Swap</button>
+    }
+    <div class="precision-row">
+        <span class="input-label" style="text-transform:uppercase; margin:0;" id="decimals-label">Decimals</span>
+        <button class="btn-icon" style="width:32px;height:32px;font-size:16px;" type="button"
+                aria-label="Decrease decimal places" @onclick="() => { if (decimals > 0) decimals--; }">−</button>
+        <span class="value" aria-labelledby="decimals-label" aria-live="polite">@decimals</span>
+        <button class="btn-icon" style="width:32px;height:32px;font-size:16px;" type="button"
+                aria-label="Increase decimal places" @onclick="() => { if (decimals < 4) decimals++; }">+</button>
+    </div>
+</div>
+
+<!-- Result -->
+@if (hasResult)
+{
+    <div class="result-card @(isError ? "error" : isLower ? "lower" : "")"
+         aria-live="polite" role="@(isError ? "alert" : "status")">
+        <div class="result-text">@resultText</div>
+        @if (!isError)
+        {
+            <div class="result-actions">
+                <button class="btn-secondary" type="button" @onclick="CopyResult">📋 Copy</button>
+            </div>
+        }
+    </div>
+}
+
+@if (showCopied)
+{
+    <div class="copied-toast" role="status">Copied!</div>
+}
+
+@code {
+    private int mode;
+    private string? inputA;
+    private string? inputB;
+    private int decimals = 2;
+    private string resultText = "";
+    private bool hasResult;
+    private bool isError;
+    private bool isLower;
+    private bool showCopied;
+
+    private string LabelA => mode switch { 0 => "Base Value (A)", 1 => "Percentage (%)", 2 => "Result Value", _ => "Value A" };
+    private string LabelB => mode switch { 0 => "Compare Value (B)", 1 => "Number", 2 => "% Change Applied", _ => "Value B" };
+    private string PlaceholderA => mode switch { 0 => "e.g. 100", 1 => "e.g. 15", 2 => "e.g. 120", _ => "" };
+    private string PlaceholderB => mode switch { 0 => "e.g. 125", 1 => "e.g. 200", 2 => "e.g. 20", _ => "" };
+
+    private void SetMode(int m)
+    {
+        mode = m;
+        inputA = null;
+        inputB = null;
+        hasResult = false;
+        isError = false;
+    }
+
+    private void Swap() => (inputA, inputB) = (inputB, inputA);
+
+    private void ClearFields()
+    {
+        inputA = null;
+        inputB = null;
+        hasResult = false;
+        isError = false;
+    }
+
+    private void Calculate()
+    {
+        if (!double.TryParse(inputA, out double a) || !double.TryParse(inputB, out double b))
+        {
+            resultText = "Please enter valid numbers";
+            hasResult = true;
+            isError = true;
+            return;
+        }
+
+        isError = false;
+        isLower = false;
+        string fmt = $"N{decimals}";
+
+        try
+        {
+            switch (mode)
+            {
+                case 0:
+                    var (pct, higher) = CalcService.PercentChange(a, b);
+                    string dir = higher ? "higher" : "lower";
+                    isLower = !higher;
+                    resultText = $"{b.ToString(fmt)} is {pct.ToString(fmt)}% {dir} than {a.ToString(fmt)}";
+                    CalcService.AddToHistory(new CalculationRecord
+                    {
+                        Mode = CalculationMode.PercentChange,
+                        InputSummary = $"{a.ToString(fmt)} → {b.ToString(fmt)}",
+                        Result = $"{pct.ToString(fmt)}% {dir}"
+                    });
+                    break;
+                case 1:
+                    double val = CalcService.PercentOf(a, b);
+                    resultText = $"{a.ToString(fmt)}% of {b.ToString(fmt)} = {val.ToString(fmt)}";
+                    CalcService.AddToHistory(new CalculationRecord
+                    {
+                        Mode = CalculationMode.PercentOf,
+                        InputSummary = $"{a.ToString(fmt)}% of {b.ToString(fmt)}",
+                        Result = val.ToString(fmt)
+                    });
+                    break;
+                case 2:
+                    double orig = CalcService.ReverseCalc(a, b);
+                    resultText = $"Original value was {orig.ToString(fmt)} (before {b.ToString(fmt)}% change → {a.ToString(fmt)})";
+                    CalcService.AddToHistory(new CalculationRecord
+                    {
+                        Mode = CalculationMode.ReverseCalc,
+                        InputSummary = $"{a.ToString(fmt)} after {b.ToString(fmt)}%",
+                        Result = $"Original: {orig.ToString(fmt)}"
+                    });
+                    break;
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            resultText = ex.Message;
+            isError = true;
+        }
+
+        hasResult = true;
+    }
+
+    private async Task CopyResult()
+    {
+        try
+        {
+            await ClipboardService.SetTextAsync(resultText);
+            showCopied = true;
+            StateHasChanged();
+            await Task.Delay(1800);
+            showCopied = false;
+            StateHasChanged();
+        }
+        catch
+        {
+            // Clipboard may be unavailable (e.g. browser without HTTPS)
+        }
+    }
+}

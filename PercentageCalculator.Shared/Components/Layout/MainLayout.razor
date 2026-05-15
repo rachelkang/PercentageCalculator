@@ -1,0 +1,22 @@
+﻿@inherits LayoutComponentBase
+
+<div class="app-shell">
+    <main class="app-content">
+        @Body
+    </main>
+
+    <nav class="tab-bar" aria-label="Main navigation">
+        <NavLink class="tab-item" href="" Match="NavLinkMatch.All" aria-label="Calculator">
+            <span class="tab-icon" aria-hidden="true">🔢</span>
+            <span>Calculator</span>
+        </NavLink>
+        <NavLink class="tab-item" href="tip" aria-label="Tip Calculator">
+            <span class="tab-icon" aria-hidden="true">💰</span>
+            <span>Tip</span>
+        </NavLink>
+        <NavLink class="tab-item" href="history" aria-label="History">
+            <span class="tab-icon" aria-hidden="true">📜</span>
+            <span>History</span>
+        </NavLink>
+    </nav>
+</div>

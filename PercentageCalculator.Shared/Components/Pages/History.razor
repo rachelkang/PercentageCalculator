@@ -1,0 +1,69 @@
+@page "/history"
+@inject ICalculationService CalcService
+
+<div class="history-header">
+    <h1 style="color:var(--accent);">📜 History</h1>
+    @if (records.Count > 0)
+    {
+        <button class="btn-secondary" type="button" aria-label="Clear all history" @onclick="ClearAll">Clear All</button>
+    }
+</div>
+
+@if (records.Count == 0)
+{
+    <div class="empty-state" role="status">
+        <div class="icon" aria-hidden="true">🧮</div>
+        <div class="title">No calculations yet</div>
+        <div class="subtitle">Your calculation history will appear here</div>
+    </div>
+}
+else
+{
+    <div role="list" aria-label="Calculation history">
+        @foreach (var record in records)
+        {
+            <div class="history-item" role="listitem">
+                <span class="mode-icon" aria-hidden="true">@record.ModeIcon</span>
+                <div class="details">
+                    <div class="result-line">@record.Result</div>
+                    <div class="input-line">@record.InputSummary</div>
+                </div>
+                <span class="time">@record.TimeAgo</span>
+                <button class="delete-btn" type="button"
+                        aria-label="Delete calculation: @record.Result"
+                        @onclick="() => Delete(record.Id)">✕</button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<CalculationRecord> records = [];
+
+    protected override void OnInitialized()
+    {
+        Refresh();
+    }
+
+    protected override void OnParametersSet()
+    {
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        records = CalcService.History.ToList();
+    }
+
+    private void Delete(string id)
+    {
+        CalcService.RemoveFromHistory(id);
+        Refresh();
+    }
+
+    private void ClearAll()
+    {
+        CalcService.ClearHistory();
+        records.Clear();
+    }
+}

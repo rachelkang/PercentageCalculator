@@ -1,0 +1,165 @@
+@page "/tip"
+@inject ICalculationService CalcService
+@inject IClipboardService ClipboardService
+
+<div class="page-header">
+    <div class="icon" aria-hidden="true">💰</div>
+    <h1>Tip Calculator</h1>
+</div>
+
+<form @onsubmit="Calculate" @onsubmit:preventDefault>
+    <div class="card">
+        <!-- Bill Amount -->
+        <div class="input-group">
+            <label class="input-label" for="billInput">Bill Amount</label>
+            <input id="billInput" class="calc-input" type="number" step="0.01" min="0"
+                   placeholder="e.g. 85.00" autocomplete="off"
+                   @bind="billAmount" @bind:event="oninput" />
+        </div>
+
+        <!-- Tip % Chips -->
+        <fieldset class="input-group" style="border:none; padding:0;">
+            <legend class="input-label">Tip %</legend>
+            <div class="chip-row" role="group" aria-label="Quick tip percentages">
+                @foreach (var pct in tipOptions)
+                {
+                    <button class="chip @(tipPercent == pct ? "active" : "")" type="button"
+                            aria-pressed="@(tipPercent == pct)"
+                            @onclick="() => SetTip(pct)">@pct%</button>
+                }
+            </div>
+            <div class="inline-input-row">
+                <label class="input-label" for="customTip" style="margin:0;">Custom:</label>
+                <input id="customTip" class="inline-input" type="number" step="1" min="0"
+                       @bind="tipPercent" @bind:event="oninput" />
+                <span aria-hidden="true">%</span>
+            </div>
+        </fieldset>
+
+        <!-- Split -->
+        <div class="input-group">
+            <label class="input-label" id="splitLabel">Split Between</label>
+            <div class="stepper" role="group" aria-labelledby="splitLabel">
+                <button class="btn-icon" type="button" aria-label="Decrease split count"
+                        @onclick="() => { if (splitCount > 1) splitCount--; }">−</button>
+                <span class="value" aria-live="polite">@splitCount</span>
+                <button class="btn-icon" type="button" aria-label="Increase split count"
+                        @onclick="() => splitCount++">+</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex; gap:8px;">
+        <button class="btn-primary" style="flex:1;" type="submit">Calculate Tip</button>
+        <button class="btn-secondary" style="height:56px; padding:0 20px;" type="button"
+                aria-label="Clear all fields" @onclick="ClearFields">✕ Clear</button>
+    </div>
+</form>
+
+@if (!string.IsNullOrEmpty(errorText))
+{
+    <div class="result-card error" role="alert">
+        <div class="result-text">@errorText</div>
+    </div>
+}
+
+@if (hasResult)
+{
+    <div class="card" aria-live="polite" role="status">
+        <div class="result-grid">
+            <span class="label">Tip</span>
+            <span class="val">@tipAmountText</span>
+
+            <span class="label">Total</span>
+            <span class="val highlight">@totalText</span>
+        </div>
+    </div>
+
+    <div style="text-align:center;">
+        <button class="btn-secondary" type="button" @onclick="CopyResult">📋 Copy Results</button>
+    </div>
+}
+
+@if (showCopied)
+{
+    <div class="copied-toast" role="status">Copied!</div>
+}
+
+@code {
+    private string? billAmount;
+    private double tipPercent = 20;
+    private int splitCount = 1;
+    private readonly int[] tipOptions = [10, 15, 18, 20, 25];
+
+    private string tipAmountText = "";
+    private string totalText = "";
+    private string perPersonText = "";
+    private bool hasResult;
+    private string? errorText;
+    private bool showCopied;
+
+    private void SetTip(int pct)
+    {
+        tipPercent = pct;
+    }
+
+    private void ClearFields()
+    {
+        billAmount = null;
+        tipPercent = 20;
+        splitCount = 1;
+        hasResult = false;
+        errorText = null;
+    }
+
+    private void Calculate()
+    {
+        errorText = null;
+        hasResult = false;
+
+        if (!double.TryParse(billAmount, out double bill) || bill < 0)
+        {
+            errorText = "Please enter a valid bill amount";
+            return;
+        }
+
+        try
+        {
+            var (tipAmt, total, perPerson) = CalcService.CalculateTip(bill, tipPercent, splitCount);
+            tipAmountText = tipAmt.ToString("C2");
+            totalText = total.ToString("C2");
+            perPersonText = perPerson.ToString("C2");
+            hasResult = true;
+
+            CalcService.AddToHistory(new CalculationRecord
+            {
+                Mode = CalculationMode.TipCalc,
+                InputSummary = $"${bill:F2} + {tipPercent}% tip ÷ {splitCount}",
+                Result = $"Total: {total:C2}"
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            errorText = ex.Message;
+        }
+    }
+
+    private async Task CopyResult()
+    {
+        try
+        {
+            string text = $"Bill: ${billAmount}\nTip ({tipPercent}%): {tipAmountText}\nTotal: {totalText}";
+            await ClipboardService.SetTextAsync(text);
+            showCopied = true;
+            StateHasChanged();
+            await Task.Delay(1800);
+            showCopied = false;
+            StateHasChanged();
+        }
+        catch
+        {
+            // Clipboard may be unavailable (e.g. browser without HTTPS)
+        }
+    }
+}

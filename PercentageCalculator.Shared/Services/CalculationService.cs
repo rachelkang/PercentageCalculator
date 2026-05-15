@@ -1,0 +1,62 @@
+using PercentageCalculator.Models;
+
+namespace PercentageCalculator.Services;
+
+public class CalculationService : ICalculationService
+{
+    private readonly List<CalculationRecord> _history = [];
+
+    public IReadOnlyList<CalculationRecord> History => _history.AsReadOnly();
+
+    public (double percentage, bool isHigher) PercentChange(double a, double b)
+    {
+        if (a == 0)
+            throw new ArgumentException("Base value (A) cannot be zero.");
+
+        double change = ((b - a) / Math.Abs(a)) * 100;
+        return (Math.Abs(change), change >= 0);
+    }
+
+    public double PercentOf(double percentage, double number)
+    {
+        return (percentage / 100.0) * number;
+    }
+
+    public double ReverseCalc(double result, double percentChange)
+    {
+        double factor = 1 + (percentChange / 100.0);
+        if (factor == 0)
+            throw new ArgumentException("A -100% change cannot be reversed (original would be infinite).");
+
+        return result / factor;
+    }
+
+    public (double tipAmount, double total, double perPerson) CalculateTip(double billAmount, double tipPercent, int splitCount)
+    {
+        if (splitCount < 1)
+            throw new ArgumentException("Split count must be at least 1.");
+
+        double tipAmount = billAmount * (tipPercent / 100.0);
+        double total = billAmount + tipAmount;
+        double perPerson = total / splitCount;
+        return (tipAmount, total, perPerson);
+    }
+
+    public void AddToHistory(CalculationRecord record)
+    {
+        _history.Insert(0, record); // Most recent first
+        if (_history.Count > 100)
+            _history.RemoveAt(_history.Count - 1);
+    }
+
+    public void RemoveFromHistory(string id)
+    {
+        var item = _history.FirstOrDefault(r => r.Id == id);
+        if (item != null) _history.Remove(item);
+    }
+
+    public void ClearHistory()
+    {
+        _history.Clear();
+    }
+}
